@@ -3,6 +3,16 @@ const categoryFilter = document.getElementById("categoryFilter");
 const productsContainer = document.getElementById("productsContainer");
 const chatForm = document.getElementById("chatForm");
 const chatWindow = document.getElementById("chatWindow");
+const userInput = document.getElementById("userInput");
+
+/* Keep conversation history so the chatbot remembers previous messages */
+const messages = [
+  {
+    role: "system",
+    content:
+      "You are a helpful beauty and skincare advisor. Give beginner-friendly routine and product advice in clear, short steps.",
+  },
+];
 
 /* Show initial placeholder until user selects a category */
 productsContainer.innerHTML = `
@@ -30,7 +40,7 @@ function displayProducts(products) {
         <p>${product.brand}</p>
       </div>
     </div>
-  `
+  `,
     )
     .join("");
 }
@@ -43,15 +53,81 @@ categoryFilter.addEventListener("change", async (e) => {
   /* filter() creates a new array containing only products 
      where the category matches what the user selected */
   const filteredProducts = products.filter(
-    (product) => product.category === selectedCategory
+    (product) => product.category === selectedCategory,
   );
 
   displayProducts(filteredProducts);
 });
 
-/* Chat form submission handler - placeholder for OpenAI integration */
-chatForm.addEventListener("submit", (e) => {
+/* Add one message to the chat window */
+function appendMessage(sender, text) {
+  const messageElement = document.createElement("p");
+  messageElement.className = "chat-message";
+  messageElement.textContent = `${sender}: ${text}`;
+  chatWindow.appendChild(messageElement);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+/* Send all conversation messages to OpenAI and return the chatbot reply */
+async function getChatbotReply() {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${open_api_key}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: messages,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || "OpenAI request failed");
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+/* Chat form submission handler with OpenAI integration */
+chatForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  chatWindow.innerHTML = "Connect to the OpenAI API for a response!";
+  const userMessage = userInput.value.trim();
+  if (!userMessage) {
+    return;
+  }
+
+  if (typeof open_api_key === "undefined" || !open_api_key) {
+    appendMessage("System", "Add your OpenAI key in secrets.js first.");
+    return;
+  }
+
+  appendMessage("You", userMessage);
+  userInput.value = "";
+
+  messages.push({
+    role: "user",
+    content: userMessage,
+  });
+
+  appendMessage("Assistant", "Thinking...");
+
+  try {
+    const assistantReply = await getChatbotReply();
+
+    /* Replace the temporary Thinking... line with the real response */
+    chatWindow.lastChild.remove();
+    appendMessage("Assistant", assistantReply);
+
+    messages.push({
+      role: "assistant",
+      content: assistantReply,
+    });
+  } catch (error) {
+    chatWindow.lastChild.remove();
+    appendMessage("System", `Error: ${error.message}`);
+  }
 });
