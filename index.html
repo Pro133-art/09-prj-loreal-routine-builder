@@ -70,6 +70,22 @@
         </button>
       </div>
 
+      <!------- Saved Items -------
+           WHAT: A library of saved routines and follow-up messages
+           WHY: Lets users keep useful routine answers and delete old ones later
+           HOW: JavaScript stores saved items in localStorage and renders them here
+      -->
+      <section class="saved-library">
+        <div class="saved-library-header">
+          <h2>Saved Routines &amp; Follow-Ups</h2>
+          <p>
+            Save any helpful routine or conversation turn, then remove it when
+            you no longer need it.
+          </p>
+        </div>
+        <div id="savedItemsList" class="saved-items-list"></div>
+      </section>
+
       <!------- Chat Area ------->
       <!-- WHAT: Main conversation interface with OpenAI chatbot
            WHY: Users can ask questions about products and get personalized advice
@@ -77,7 +93,12 @@
                 Full conversation history is maintained so AI remembers context
       -->
       <section class="chatbox">
-        <h2>Let's Build Your Routine</h2>
+        <div class="chatbox-header">
+          <h2>Let's Build Your Routine</h2>
+          <button id="newChatBtn" class="new-chat-btn">
+            <i class="fa-solid fa-plus"></i> New Chat
+          </button>
+        </div>
         <!-- Where messages appear (scrollable) -->
         <div id="chatWindow" class="chat-window"></div>
 

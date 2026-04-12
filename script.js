@@ -9,8 +9,10 @@ const productsContainer = document.getElementById("productsContainer"); // Where
 const chatForm = document.getElementById("chatForm"); // The chat form (submit button + input)
 const chatWindow = document.getElementById("chatWindow"); // The area showing chat messages
 const userInput = document.getElementById("userInput"); // The text input field in the chat
+const newChatBtn = document.getElementById("newChatBtn"); // Button to start a new chat
 const selectedProductsList = document.getElementById("selectedProductsList"); // Container to show selected products
 const generateRoutineButton = document.getElementById("generateRoutine"); // Button to generate routine
+const savedItemsList = document.getElementById("savedItemsList"); // Where saved routines and conversations appear
 
 /* ====== PRODUCT STORAGE ======
    - allProducts: Store ALL products from JSON so we can filter and look them up
@@ -29,6 +31,12 @@ const generateRoutineButton = document.getElementById("generateRoutine"); // But
 */
 let allProducts = []; // Will hold all products from products.json
 const selectedProductIds = new Set(); // Store IDs of selected products
+const CHAT_HISTORY_STORAGE_KEY = "loreal-chat-history"; // Saves the conversation across page reloads
+const SAVED_ITEMS_STORAGE_KEY = "loreal-saved-items"; // Saves routines and follow-up messages
+const messageElementMap = new Map(); // Keeps track of rendered chat messages so we can delete them later
+let savedItems = []; // Saved routines and conversation snippets
+let messageIdCounter = 0; // Used to make unique chat message ids
+let savedItemIdCounter = 0; // Used to make unique saved item ids
 
 /* ====== CONVERSATION MEMORY + SYSTEM INSTRUCTIONS ======
    Purpose: Store conversation history and tell OpenAI how to behave
@@ -273,6 +281,287 @@ function buildSelectedProductsContext() {
   return `Selected products:\n${productLines.join("\n")}`;
 }
 
+/* ====== STORAGE + MESSAGE HELPERS ======
+   Purpose: Keep chat history and saved items in localStorage
+
+   WHY THIS MATTERS:
+   - Users can refresh the page without losing their conversation
+   - Saved routines and follow-up messages stay available until deleted
+   - We can delete individual conversation messages from the chat history
+*/
+function createUniqueId(prefix) {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  if (prefix === "message") {
+    messageIdCounter += 1;
+    return `${prefix}-${Date.now()}-${messageIdCounter}`;
+  }
+
+  savedItemIdCounter += 1;
+  return `${prefix}-${Date.now()}-${savedItemIdCounter}`;
+}
+
+function isRoutineMessage(text) {
+  return /AM Routine:|PM Routine:|Why this works:/i.test(text);
+}
+
+/* ====== EXTRACT TOPIC FROM CONVERSATION ======
+   Purpose: Analyze conversation messages to auto-generate a meaningful topic/title
+   
+   WHY?
+   - Instead of showing raw message text, we want a concise topic
+   - Users can quickly understand what each saved conversation is about
+   - Topics are generated from the assistant's first message or user's first question
+   
+   LOGIC:
+   1. Get the first user message (what they asked about)
+   2. Get the first assistant response to understand the topic
+   3. Extract keywords from the assistant's response
+   4. Combine into a concise topic (max 50 characters)
+   
+   EXAMPLE:
+   User: "I want a routine for sensitive skin with hydration"
+   Assistant: "Here's a routine for sensitive skin..."
+   Generated topic: "Sensitive Skin Hydration Routine"
+*/
+function extractTopicFromConversation(conversationMessages) {
+  // Find the first user message and assistant response
+  const firstUserMessage = conversationMessages.find(
+    (msg) => msg.role === "user"
+  );
+  const firstAssistantMessage = conversationMessages.find(
+    (msg) => msg.role === "assistant"
+  );
+
+  // Try to create a topic from the user's message
+  if (firstUserMessage) {
+    const userText = firstUserMessage.displayText || firstUserMessage.content;
+    // Take first 50 characters or up to the first period
+    const topicCandidate = userText.split("\n")[0].slice(0, 60);
+    if (topicCandidate.length > 5) {
+      return topicCandidate.trim();
+    }
+  }
+
+  // Fallback: try to extract from assistant's response
+  if (firstAssistantMessage) {
+    const assistantText = firstAssistantMessage.displayText || firstAssistantMessage.content;
+    // Extract first line or first 50 chars
+    const lines = assistantText.split("\n");
+    const firstLine = lines[0].slice(0, 60);
+    if (firstLine.length > 5) {
+      return firstLine.trim();
+    }
+  }
+
+  // Default fallback
+  return "Saved Conversation";
+}
+
+function getMessageLabel(role) {
+  if (role === "user") {
+    return "You";
+  }
+
+  if (role === "assistant") {
+    return "Assistant";
+  }
+
+  return "System";
+}
+
+function getSavedItemTitle(message) {
+  if (message.role === "assistant" && isRoutineMessage(message.content)) {
+    return "Saved routine";
+  }
+
+  if (message.role === "user") {
+    return "Saved follow-up question";
+  }
+
+  if (message.role === "assistant") {
+    return "Saved follow-up reply";
+  }
+
+  return "Saved note";
+}
+
+function persistChatHistory() {
+  const conversationMessages = messages.filter((message) => message.role !== "system");
+  localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(conversationMessages));
+}
+
+function persistSavedItems() {
+  localStorage.setItem(SAVED_ITEMS_STORAGE_KEY, JSON.stringify(savedItems));
+}
+
+function loadChatHistory() {
+  const storedHistory = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+
+  if (!storedHistory) {
+    return [];
+  }
+
+  try {
+    const parsedHistory = JSON.parse(storedHistory);
+    return Array.isArray(parsedHistory) ? parsedHistory : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function loadSavedItems() {
+  const storedItems = localStorage.getItem(SAVED_ITEMS_STORAGE_KEY);
+
+  if (!storedItems) {
+    return [];
+  }
+
+  try {
+    const parsedItems = JSON.parse(storedItems);
+    return Array.isArray(parsedItems) ? parsedItems : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function renderSavedItems() {
+  if (!savedItemsList) {
+    return;
+  }
+
+  if (savedItems.length === 0) {
+    savedItemsList.innerHTML = `
+      <div class="saved-empty-state">
+        <p>No saved routines or follow-ups yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  savedItemsList.innerHTML = savedItems
+    .map(
+      (item) => `
+        <article class="saved-item">
+          <div class="saved-item-header">
+            <div>
+              <p class="saved-item-type">${item.kind}</p>
+              <h3>${item.title}</h3>
+            </div>
+            <button type="button" class="saved-item-delete" data-delete-saved-id="${item.id}">Delete</button>
+          </div>
+          <p class="saved-item-content">${item.content}</p>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+if (savedItemsList) {
+  savedItemsList.addEventListener("click", (e) => {
+    const deleteButton = e.target.closest("[data-delete-saved-id]");
+
+    if (!deleteButton) {
+      return;
+    }
+
+    const savedItemId = deleteButton.dataset.deleteSavedId;
+    savedItems = savedItems.filter((item) => item.id !== savedItemId);
+    persistSavedItems();
+    renderSavedItems();
+  });
+}
+
+function saveMessageToLibrary(messageId) {
+  const message = messages.find((entry) => entry.id === messageId);
+
+  if (!message || message.role === "system") {
+    return;
+  }
+
+  const alreadySaved = savedItems.some((item) => item.sourceMessageId === messageId);
+
+  if (alreadySaved) {
+    return;
+  }
+
+  savedItems.unshift({
+    id: createUniqueId("saved"),
+    sourceMessageId: messageId,
+    role: message.role,
+    kind: message.role === "assistant" && isRoutineMessage(message.content) ? "Routine" : message.role === "user" ? "Follow-up question" : "Follow-up reply",
+    title: getSavedItemTitle(message),
+    content: message.displayText || message.content,
+    createdAt: new Date().toISOString(),
+  });
+
+  persistSavedItems();
+  renderSavedItems();
+}
+
+function deleteConversationMessage(messageId) {
+  const messageIndex = messages.findIndex((entry) => entry.id === messageId);
+
+  if (messageIndex === -1 || messages[messageIndex].role === "system") {
+    return;
+  }
+
+  messages.splice(messageIndex, 1);
+
+  const messageElement = messageElementMap.get(messageId);
+  if (messageElement) {
+    messageElement.remove();
+    messageElementMap.delete(messageId);
+  }
+
+  persistChatHistory();
+}
+
+function createMessageActions(message) {
+  const actionsContainer = document.createElement("div");
+  actionsContainer.className = "message-actions";
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.className = "message-action-button message-save-button";
+  saveButton.dataset.action = "save-message";
+  saveButton.dataset.messageId = message.id;
+  saveButton.textContent = message.role === "assistant" && isRoutineMessage(message.content) ? "Save routine" : message.role === "user" ? "Save question" : "Save reply";
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "message-action-button message-delete-button";
+  deleteButton.dataset.action = "delete-message";
+  deleteButton.dataset.messageId = message.id;
+  deleteButton.textContent = "Delete";
+
+  actionsContainer.appendChild(saveButton);
+  actionsContainer.appendChild(deleteButton);
+
+  return actionsContainer;
+}
+
+function hydrateConversation() {
+  const storedConversation = loadChatHistory();
+
+  storedConversation.forEach((message) => {
+    if (!message.id) {
+      message.id = createUniqueId("message");
+    }
+
+    messages.push(message);
+
+    appendMessage(getMessageLabel(message.role), message.displayText || message.content, {
+      messageId: message.id,
+      canSave: true,
+      canDelete: true,
+      isRoutine: message.role === "assistant" && isRoutineMessage(message.content),
+    });
+  });
+}
+
 /* ====== REFRESH CURRENT CATEGORY VIEW ======
    Purpose: Redraw the product grid for the currently selected category
    
@@ -442,6 +731,27 @@ selectedProductsList.addEventListener("click", (e) => {
   refreshCurrentCategoryView(); // Update highlighting in product grid
 });
 
+/* ====== CHAT ACTION HANDLER ======
+   Purpose: Let users save or delete individual chat messages
+*/
+chatWindow.addEventListener("click", (e) => {
+  const actionButton = e.target.closest("[data-action]");
+
+  if (!actionButton) {
+    return;
+  }
+
+  const { action, messageId } = actionButton.dataset;
+
+  if (action === "save-message") {
+    saveMessageToLibrary(messageId);
+  }
+
+  if (action === "delete-message") {
+    deleteConversationMessage(messageId);
+  }
+});
+
 /* ====== APPEND MESSAGE FUNCTION ======
    Purpose: Add a new message to the chat window
    
@@ -471,10 +781,14 @@ selectedProductsList.addEventListener("click", (e) => {
    const thinkingMsg = appendMessage("Assistant", "Thinking...");
    // Later: thinkingMsg.remove(); // Remove it and replace with real reply
 */
-function appendMessage(sender, text) {
+function appendMessage(sender, text, options = {}) {
   // Create main container for the message
   const messageElement = document.createElement("div");
   messageElement.className = `chat-message ${sender.toLowerCase()}-message`; // CSS class based on sender
+  if (options.messageId) {
+    messageElement.dataset.messageId = options.messageId;
+    messageElementMap.set(options.messageId, messageElement);
+  }
 
   // Create label showing who sent it ("You", "Assistant", etc.)
   const labelElement = document.createElement("p");
@@ -489,6 +803,14 @@ function appendMessage(sender, text) {
   // Add label and text to the container
   messageElement.appendChild(labelElement);
   messageElement.appendChild(textElement);
+
+  if (options.canSave && options.messageId) {
+    messageElement.appendChild(createMessageActions({
+      id: options.messageId,
+      role: sender === "You" ? "user" : sender === "Assistant" ? "assistant" : "system",
+      content: text,
+    }));
+  }
   
   // Add the complete message to the chat window
   chatWindow.appendChild(messageElement);
@@ -537,7 +859,7 @@ async function getChatbotReply() {
     },
     body: JSON.stringify({
       model: "gpt-4o", // Which AI model to use
-      messages: messages, // Send the entire conversation history
+      messages: messages.map(({ role, content }) => ({ role, content })), // Send the entire conversation history
     }),
   });
 
@@ -582,14 +904,24 @@ async function getChatbotReply() {
    - DRY principle: code once, use twice
 */
 async function sendMessageToAssistant(userMessage, visibleUserMessage) {
+  const userMessageId = createUniqueId("message");
+  const visibleMessage = visibleUserMessage || userMessage;
+
   // Show what the user typed (or a shortened version)
-  appendMessage("You", visibleUserMessage || userMessage);
+  appendMessage("You", visibleMessage, {
+    messageId: userMessageId,
+    canSave: true,
+    canDelete: true,
+  });
 
   // Add the full message to conversation history
   messages.push({
+    id: userMessageId,
     role: "user",
     content: userMessage,
+    displayText: visibleMessage,
   });
+  persistChatHistory();
 
   // Show temporary "thinking" message while waiting for OpenAI
   const thinkingMessageElement = appendMessage("Assistant", "Thinking...");
@@ -600,13 +932,21 @@ async function sendMessageToAssistant(userMessage, visibleUserMessage) {
 
     // Remove the temporary "Thinking..." and show the real reply
     thinkingMessageElement.remove();
-    appendMessage("Assistant", assistantReply);
+    const assistantMessageId = createUniqueId("message");
+    appendMessage("Assistant", assistantReply, {
+      messageId: assistantMessageId,
+      canSave: true,
+      canDelete: true,
+    });
 
     // Add OpenAI's response to conversation history
     messages.push({
+      id: assistantMessageId,
       role: "assistant",
       content: assistantReply,
+      displayText: assistantReply,
     });
+    persistChatHistory();
   } catch (error) {
     // If something went wrong, remove "Thinking..." and show error
     thinkingMessageElement.remove();
@@ -726,6 +1066,50 @@ generateRoutineButton.addEventListener("click", async () => {
   );
 });
 
+/* ====== RESET CHAT FUNCTION ======
+   Purpose: Clear the chat window and start a fresh conversation
+   
+   WHAT IT DOES:
+   1. Clears all messages from the chat window (HTML)
+   2. Resets the messages array to just the system message
+   3. Clears the message element map used for tracking
+   4. Resets the message ID counter
+   5. Clears saved chat history from localStorage
+   
+   WHY?
+   - Allows users to start a new conversation without reloading the page
+   - Each new chat is independent with its own history
+   - System message is preserved so AI knows how to behave
+*/
+function resetChat() {
+  // Clear all messages from the chat window
+  chatWindow.innerHTML = "";
+  
+  // Reset messages array to just the system message
+  messages.length = 0;
+  messages.push({
+    role: "system",
+    content:
+      "You are a helpful beauty and skincare advisor. Give beginner-friendly advice in short, clear steps. Always format routine answers with this exact structure: Title line, AM Routine section, PM Routine section, Why this works section, Missing step section (if needed). Use numbered steps and short lines.",
+  });
+  
+  // Clear the message element map
+  messageElementMap.clear();
+  
+  // Reset message ID counter
+  messageIdCounter = 0;
+  
+  // Clear chat history from localStorage
+  localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
+}
+
+/* ====== NEW CHAT BUTTON HANDLER ======
+   Purpose: Handle the "New Chat" button click
+*/
+newChatBtn.addEventListener("click", () => {
+  resetChat();
+});
+
 /* ====== INITIALIZATION ======
    Purpose: Load all products when page first loads
    
@@ -748,6 +1132,9 @@ generateRoutineButton.addEventListener("click", async () => {
 async function init() {
   allProducts = await loadProducts(); // Load all products from JSON
   renderSelectedProducts(); // Show empty selected products area
+  savedItems = loadSavedItems();
+  renderSavedItems();
+  hydrateConversation();
 }
 
 // Run initialization when page loads
