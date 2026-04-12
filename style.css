@@ -365,8 +365,9 @@ body {
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 0.3s ease,
-    visibility 0.3s ease;
+    opacity 0.2s ease,
+    visibility 0s linear 0.35s;
+  transition-delay: 0.15s, 0s;
   z-index: 1000;
   bottom: 100%;
   left: 50%;
@@ -391,6 +392,7 @@ body {
 .product-description-tooltip:hover {
   opacity: 1;
   visibility: visible;
+  transition-delay: 0.15s, 0s;
 }
 
 /* selected products */
