@@ -79,6 +79,49 @@ body {
   overflow-y: auto;
   background: #fafafa;
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-message {
+  border-radius: 12px;
+  padding: 10px 12px;
+  max-width: 92%;
+}
+
+.chat-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.chat-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.you-message {
+  align-self: flex-end;
+  background: #111;
+  color: #fff;
+}
+
+.assistant-message {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #ddd;
+}
+
+.system-message {
+  align-self: center;
+  background: #fff5f5;
+  border: 1px solid #f0b6b6;
+  color: #7f1d1d;
 }
 
 /* placeholder message */

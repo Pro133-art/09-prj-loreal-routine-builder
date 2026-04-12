@@ -16,7 +16,7 @@ const messages = [
   {
     role: "system",
     content:
-      "You are a helpful beauty and skincare advisor. Give beginner-friendly routine and product advice in clear, short steps.",
+      "You are a helpful beauty and skincare advisor. Give beginner-friendly advice in short, clear steps. Always format routine answers with this exact structure: Title line, AM Routine section, PM Routine section, Why this works section, Missing step section (if needed). Use numbered steps and short lines.",
   },
 ];
 
@@ -173,11 +173,23 @@ selectedProductsList.addEventListener("click", (e) => {
 
 /* Add one message to the chat window */
 function appendMessage(sender, text) {
-  const messageElement = document.createElement("p");
-  messageElement.className = "chat-message";
-  messageElement.textContent = `${sender}: ${text}`;
+  const messageElement = document.createElement("div");
+  messageElement.className = `chat-message ${sender.toLowerCase()}-message`;
+
+  const labelElement = document.createElement("p");
+  labelElement.className = "chat-label";
+  labelElement.textContent = sender;
+
+  const textElement = document.createElement("p");
+  textElement.className = "chat-text";
+  textElement.textContent = text;
+
+  messageElement.appendChild(labelElement);
+  messageElement.appendChild(textElement);
   chatWindow.appendChild(messageElement);
   chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  return messageElement;
 }
 
 /* Send all conversation messages to OpenAI and return the chatbot reply */
@@ -212,13 +224,13 @@ async function sendMessageToAssistant(userMessage, visibleUserMessage) {
     content: userMessage,
   });
 
-  appendMessage("Assistant", "Thinking...");
+  const thinkingMessageElement = appendMessage("Assistant", "Thinking...");
 
   try {
     const assistantReply = await getChatbotReply();
 
     /* Replace the temporary Thinking... line with the real response */
-    chatWindow.lastChild.remove();
+    thinkingMessageElement.remove();
     appendMessage("Assistant", assistantReply);
 
     messages.push({
@@ -226,7 +238,7 @@ async function sendMessageToAssistant(userMessage, visibleUserMessage) {
       content: assistantReply,
     });
   } catch (error) {
-    chatWindow.lastChild.remove();
+    thinkingMessageElement.remove();
     appendMessage("System", `Error: ${error.message}`);
   }
 }
@@ -269,7 +281,7 @@ generateRoutineButton.addEventListener("click", async () => {
   }
 
   const selectedContext = buildSelectedProductsContext();
-  const routineRequest = `Create a beginner-friendly AM/PM routine based ONLY on these selected products.\n\n${selectedContext}\n\nRules:\n1) Use only selected products.\n2) Put steps in the correct order.\n3) Keep it short and clear for a beginner.\n4) Mention how often to use each product.\n5) If important product types are missing (like sunscreen), clearly mention what is missing.`;
+  const routineRequest = `Create a beginner-friendly AM/PM routine based ONLY on these selected products.\n\n${selectedContext}\n\nRules:\n1) Use only selected products.\n2) Put steps in the correct order.\n3) Keep it short and clear for a beginner.\n4) Mention how often to use each product.\n5) If important product types are missing (like sunscreen), clearly mention what is missing.\n6) Format exactly like this:\nTitle: Routine built from your selected products\nAM Routine:\n1. ...\n2. ...\nPM Routine:\n1. ...\n2. ...\nWhy this works:\n- ...\nMissing step (if any):\n- ...`;
 
   await sendMessageToAssistant(
     routineRequest,
