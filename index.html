@@ -24,6 +24,12 @@
       </header>
 
       <!-- Category Filter -->
+      <!-- WHAT: Dropdown menu to select a product category
+           WHY: Filters products so users see only what they're interested in
+           HOW: When user selects an option, JavaScript listens for "change" event,
+                filters all products, and displays matching ones
+           Note: Option values must exactly match product.category in products.json
+      -->
       <div class="search-section">
         <select id="categoryFilter">
           <option value="" disabled selected>Choose a Category</option>
@@ -41,9 +47,21 @@
       </div>
 
       <!-- Products Grid -->
+      <!-- WHAT: Container for product cards
+           WHY: Shows filtered products in a nice grid layout
+           HOW: JavaScript fills this with <button> elements for each product
+                Users click buttons to select products
+           Empty initially - JavaScript adds content dynamically
+      -->
       <div id="productsContainer" class="products-grid"></div>
 
       <!-- Selected Products -->
+      <!-- WHAT: Shows which products user has chosen (as removable chips)
+           WHY: Users need visual feedback of their selections
+           HOW: When user clicks a product card, JavaScript adds/removes it from this area
+                Each chip has an X button to remove it
+                "Generate Routine" button creates an AI routine from selections
+      -->
       <div class="selected-products">
         <h2>Selected Products</h2>
         <div id="selectedProductsList"></div>
@@ -53,10 +71,17 @@
       </div>
 
       <!------- Chat Area ------->
+      <!-- WHAT: Main conversation interface with OpenAI chatbot
+           WHY: Users can ask questions about products and get personalized advice
+           HOW: User types a message → JavaScript sends to OpenAI API → Reply appears in chat
+                Full conversation history is maintained so AI remembers context
+      -->
       <section class="chatbox">
         <h2>Let's Build Your Routine</h2>
+        <!-- Where messages appear (scrollable) -->
         <div id="chatWindow" class="chat-window"></div>
 
+        <!-- Form for user to type and send messages -->
         <form id="chatForm" class="chat-form">
           <label for="userInput" class="visually-hidden">Message</label>
           <input
@@ -86,7 +111,12 @@
       </footer>
     </div>
 
-    <!-- secrets.js can be removed when using Cloudflare Workers for API requests -->
+    <!-- SCRIPT LOADING ORDER IS IMPORTANT!
+         1. secrets.js loads FIRST - defines open_api_key variable
+         2. script.js loads SECOND - uses open_api_key to call OpenAI API
+         
+         If you reverse this order, script.js will try to use open_api_key before it exists (error!)
+    -->
     <script src="secrets.js"></script>
     <script src="script.js"></script>
   </body>
