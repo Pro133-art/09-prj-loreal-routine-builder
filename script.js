@@ -32,9 +32,9 @@ const savedItemsList = document.getElementById("savedItemsList"); // Where saved
 let allProducts = []; // Will hold all products from products.json
 const selectedProductIds = new Set(); // Store IDs of selected products
 const CHAT_HISTORY_STORAGE_KEY = "loreal-chat-history"; // Saves the conversation across page reloads
-const SAVED_ITEMS_STORAGE_KEY = "loreal-saved-items"; // Saves routines and follow-up messages
+const SAVED_ITEMS_STORAGE_KEY = "loreal-saved-items"; // Saves routines
 const messageElementMap = new Map(); // Keeps track of rendered chat messages so we can delete them later
-let savedItems = []; // Saved routines and conversation snippets
+let savedItems = []; // Saved routines
 let messageIdCounter = 0; // Used to make unique chat message ids
 let savedItemIdCounter = 0; // Used to make unique saved item ids
 
@@ -286,8 +286,7 @@ function buildSelectedProductsContext() {
 
    WHY THIS MATTERS:
    - Users can refresh the page without losing their conversation
-   - Saved routines and follow-up messages stay available until deleted
-   - We can delete individual conversation messages from the chat history
+  - Saved routines stay available until deleted
 */
 function createUniqueId(prefix) {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -307,59 +306,6 @@ function isRoutineMessage(text) {
   return /AM Routine:|PM Routine:|Why this works:/i.test(text);
 }
 
-/* ====== EXTRACT TOPIC FROM CONVERSATION ======
-   Purpose: Analyze conversation messages to auto-generate a meaningful topic/title
-   
-   WHY?
-   - Instead of showing raw message text, we want a concise topic
-   - Users can quickly understand what each saved conversation is about
-   - Topics are generated from the assistant's first message or user's first question
-   
-   LOGIC:
-   1. Get the first user message (what they asked about)
-   2. Get the first assistant response to understand the topic
-   3. Extract keywords from the assistant's response
-   4. Combine into a concise topic (max 50 characters)
-   
-   EXAMPLE:
-   User: "I want a routine for sensitive skin with hydration"
-   Assistant: "Here's a routine for sensitive skin..."
-   Generated topic: "Sensitive Skin Hydration Routine"
-*/
-function extractTopicFromConversation(conversationMessages) {
-  // Find the first user message and assistant response
-  const firstUserMessage = conversationMessages.find(
-    (msg) => msg.role === "user"
-  );
-  const firstAssistantMessage = conversationMessages.find(
-    (msg) => msg.role === "assistant"
-  );
-
-  // Try to create a topic from the user's message
-  if (firstUserMessage) {
-    const userText = firstUserMessage.displayText || firstUserMessage.content;
-    // Take first 50 characters or up to the first period
-    const topicCandidate = userText.split("\n")[0].slice(0, 60);
-    if (topicCandidate.length > 5) {
-      return topicCandidate.trim();
-    }
-  }
-
-  // Fallback: try to extract from assistant's response
-  if (firstAssistantMessage) {
-    const assistantText = firstAssistantMessage.displayText || firstAssistantMessage.content;
-    // Extract first line or first 50 chars
-    const lines = assistantText.split("\n");
-    const firstLine = lines[0].slice(0, 60);
-    if (firstLine.length > 5) {
-      return firstLine.trim();
-    }
-  }
-
-  // Default fallback
-  return "Saved Conversation";
-}
-
 function getMessageLabel(role) {
   if (role === "user") {
     return "You";
@@ -372,20 +318,23 @@ function getMessageLabel(role) {
   return "System";
 }
 
-function getSavedItemTitle(message) {
-  if (message.role === "assistant" && isRoutineMessage(message.content)) {
-    return "Saved routine";
+function extractRoutineTopic(routineText) {
+  const firstLine = routineText.split("\n").find((line) => line.trim().length > 0) || "";
+  const cleanedFirstLine = firstLine.replace(/^Title:\s*/i, "").trim();
+
+  if (cleanedFirstLine.length >= 5) {
+    return cleanedFirstLine.slice(0, 60);
   }
 
-  if (message.role === "user") {
-    return "Saved follow-up question";
+  const amLine = routineText
+    .split("\n")
+    .find((line) => /am routine|pm routine|sensitive|acne|dry|oily|hydration/i.test(line));
+
+  if (amLine) {
+    return amLine.trim().slice(0, 60);
   }
 
-  if (message.role === "assistant") {
-    return "Saved follow-up reply";
-  }
-
-  return "Saved note";
+  return "My routine";
 }
 
 function persistChatHistory() {
@@ -435,7 +384,7 @@ function renderSavedItems() {
   if (savedItems.length === 0) {
     savedItemsList.innerHTML = `
       <div class="saved-empty-state">
-        <p>No saved routines or follow-ups yet.</p>
+        <p>No saved routines yet.</p>
       </div>
     `;
     return;
@@ -477,7 +426,7 @@ if (savedItemsList) {
 function saveMessageToLibrary(messageId) {
   const message = messages.find((entry) => entry.id === messageId);
 
-  if (!message || message.role === "system") {
+  if (!message || message.role !== "assistant" || !isRoutineMessage(message.content)) {
     return;
   }
 
@@ -487,12 +436,29 @@ function saveMessageToLibrary(messageId) {
     return;
   }
 
+  const defaultTopic = extractRoutineTopic(message.displayText || message.content);
+  const userTopic = window.prompt(
+    "Add a short name/topic for this routine so you can find it later:",
+    defaultTopic,
+  );
+
+  if (userTopic === null) {
+    return;
+  }
+
+  const trimmedTopic = userTopic.trim();
+
+  if (!trimmedTopic) {
+    appendMessage("System", "Routine was not saved. Please add a name/topic.");
+    return;
+  }
+
   savedItems.unshift({
     id: createUniqueId("saved"),
     sourceMessageId: messageId,
     role: message.role,
-    kind: message.role === "assistant" && isRoutineMessage(message.content) ? "Routine" : message.role === "user" ? "Follow-up question" : "Follow-up reply",
-    title: getSavedItemTitle(message),
+    kind: "Routine",
+    title: trimmedTopic,
     content: message.displayText || message.content,
     createdAt: new Date().toISOString(),
   });
@@ -501,25 +467,11 @@ function saveMessageToLibrary(messageId) {
   renderSavedItems();
 }
 
-function deleteConversationMessage(messageId) {
-  const messageIndex = messages.findIndex((entry) => entry.id === messageId);
-
-  if (messageIndex === -1 || messages[messageIndex].role === "system") {
-    return;
-  }
-
-  messages.splice(messageIndex, 1);
-
-  const messageElement = messageElementMap.get(messageId);
-  if (messageElement) {
-    messageElement.remove();
-    messageElementMap.delete(messageId);
-  }
-
-  persistChatHistory();
-}
-
 function createMessageActions(message) {
+  if (message.role !== "assistant" || !isRoutineMessage(message.content)) {
+    return null;
+  }
+
   const actionsContainer = document.createElement("div");
   actionsContainer.className = "message-actions";
 
@@ -528,17 +480,9 @@ function createMessageActions(message) {
   saveButton.className = "message-action-button message-save-button";
   saveButton.dataset.action = "save-message";
   saveButton.dataset.messageId = message.id;
-  saveButton.textContent = message.role === "assistant" && isRoutineMessage(message.content) ? "Save routine" : message.role === "user" ? "Save question" : "Save reply";
-
-  const deleteButton = document.createElement("button");
-  deleteButton.type = "button";
-  deleteButton.className = "message-action-button message-delete-button";
-  deleteButton.dataset.action = "delete-message";
-  deleteButton.dataset.messageId = message.id;
-  deleteButton.textContent = "Delete";
+  saveButton.textContent = "Save routine";
 
   actionsContainer.appendChild(saveButton);
-  actionsContainer.appendChild(deleteButton);
 
   return actionsContainer;
 }
@@ -746,10 +690,6 @@ chatWindow.addEventListener("click", (e) => {
   if (action === "save-message") {
     saveMessageToLibrary(messageId);
   }
-
-  if (action === "delete-message") {
-    deleteConversationMessage(messageId);
-  }
 });
 
 /* ====== APPEND MESSAGE FUNCTION ======
@@ -805,11 +745,15 @@ function appendMessage(sender, text, options = {}) {
   messageElement.appendChild(textElement);
 
   if (options.canSave && options.messageId) {
-    messageElement.appendChild(createMessageActions({
+    const actionsElement = createMessageActions({
       id: options.messageId,
       role: sender === "You" ? "user" : sender === "Assistant" ? "assistant" : "system",
       content: text,
-    }));
+    });
+
+    if (actionsElement) {
+      messageElement.appendChild(actionsElement);
+    }
   }
   
   // Add the complete message to the chat window
