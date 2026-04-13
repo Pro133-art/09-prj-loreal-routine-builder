@@ -1,5 +1,6 @@
 // DOM references
 const categoryFilter = document.getElementById("categoryFilter");
+const productSearch = document.getElementById("productSearch");
 const productsContainer = document.getElementById("productsContainer");
 const chatForm = document.getElementById("chatForm");
 const chatWindow = document.getElementById("chatWindow");
@@ -47,7 +48,7 @@ function displayProducts(products) {
   if (products.length === 0) {
     productsContainer.innerHTML = `
       <div class="placeholder-message">
-        No products found for this category
+        No products match your current filters
       </div>
     `;
     return;
@@ -357,27 +358,58 @@ function hydrateConversation() {
 
 // Category and product selection handlers
 function refreshCurrentCategoryView() {
-  const selectedCategory = categoryFilter.value;
+  applyProductFilters();
+}
 
-  if (!selectedCategory) {
+function matchesProductSearch(product, searchTerm) {
+  if (!searchTerm) {
+    return true;
+  }
+
+  const searchableText = [
+    product.name,
+    product.brand,
+    product.description,
+    product.category,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return searchableText.includes(searchTerm);
+}
+
+function applyProductFilters() {
+  const selectedCategory = categoryFilter.value;
+  const searchTerm = productSearch.value.trim().toLowerCase();
+
+  // Keep initial empty state when no filter is applied.
+  if (!selectedCategory && !searchTerm) {
+    productsContainer.innerHTML = `
+      <div class="placeholder-message">
+        Choose a category or search for a product
+      </div>
+    `;
     return;
   }
 
-  const filteredProducts = allProducts.filter(
-    (product) => product.category === selectedCategory,
-  );
+  const filteredProducts = allProducts.filter((product) => {
+    const categoryMatches = selectedCategory
+      ? product.category === selectedCategory
+      : true;
+    const searchMatches = matchesProductSearch(product, searchTerm);
+
+    return categoryMatches && searchMatches;
+  });
 
   displayProducts(filteredProducts);
 }
 
-categoryFilter.addEventListener("change", async (e) => {
-  const selectedCategory = e.target.value;
+categoryFilter.addEventListener("change", () => {
+  applyProductFilters();
+});
 
-  const filteredProducts = allProducts.filter(
-    (product) => product.category === selectedCategory,
-  );
-
-  displayProducts(filteredProducts);
+productSearch.addEventListener("input", () => {
+  applyProductFilters();
 });
 
 productsContainer.addEventListener("click", (e) => {
