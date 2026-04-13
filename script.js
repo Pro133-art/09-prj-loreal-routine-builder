@@ -71,6 +71,15 @@ function displayProducts(products) {
     .join("");
 }
 
+function normalizeSearchText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 // Product selection helpers
 function getProductById(productId) {
   return allProducts.find((product) => product.id === Number(productId));
@@ -149,19 +158,17 @@ function getMessageLabel(role) {
 }
 
 function extractRoutineTopic(routineText) {
-  const firstLine =
-    routineText.split("\n").find((line) => line.trim().length > 0) || "";
+  const lines = routineText.split("\n");
+  const firstLine = lines.find((line) => line.trim().length > 0) || "";
   const cleanedFirstLine = firstLine.replace(/^Title:\s*/i, "").trim();
 
   if (cleanedFirstLine.length >= 5) {
     return cleanedFirstLine.slice(0, 60);
   }
 
-  const amLine = routineText
-    .split("\n")
-    .find((line) =>
-      /am routine|pm routine|sensitive|acne|dry|oily|hydration/i.test(line),
-    );
+  const amLine = lines.find((line) =>
+    /am routine|pm routine|sensitive|acne|dry|oily|hydration/i.test(line),
+  );
 
   if (amLine) {
     return amLine.trim().slice(0, 60);
@@ -184,34 +191,27 @@ function persistSavedItems() {
   localStorage.setItem(SAVED_ITEMS_STORAGE_KEY, JSON.stringify(savedItems));
 }
 
-function loadChatHistory() {
-  const storedHistory = localStorage.getItem(CHAT_HISTORY_STORAGE_KEY);
+function loadArrayFromStorage(storageKey) {
+  const storedValue = localStorage.getItem(storageKey);
 
-  if (!storedHistory) {
+  if (!storedValue) {
     return [];
   }
 
   try {
-    const parsedHistory = JSON.parse(storedHistory);
-    return Array.isArray(parsedHistory) ? parsedHistory : [];
+    const parsedValue = JSON.parse(storedValue);
+    return Array.isArray(parsedValue) ? parsedValue : [];
   } catch (error) {
     return [];
   }
 }
 
+function loadChatHistory() {
+  return loadArrayFromStorage(CHAT_HISTORY_STORAGE_KEY);
+}
+
 function loadSavedItems() {
-  const storedItems = localStorage.getItem(SAVED_ITEMS_STORAGE_KEY);
-
-  if (!storedItems) {
-    return [];
-  }
-
-  try {
-    const parsedItems = JSON.parse(storedItems);
-    return Array.isArray(parsedItems) ? parsedItems : [];
-  } catch (error) {
-    return [];
-  }
+  return loadArrayFromStorage(SAVED_ITEMS_STORAGE_KEY);
 }
 
 function renderSavedItems() {
@@ -367,21 +367,19 @@ function matchesProductSearch(product, searchTerm) {
     return true;
   }
 
-  const searchableText = [
-    product.name,
-    product.brand,
-    product.description,
-    product.category,
-  ]
-    .join(" ")
-    .toLowerCase();
+  const searchableText = normalizeSearchText(
+    [product.name, product.brand, product.description, product.category].join(
+      " ",
+    ),
+  );
+  const normalizedSearchTerm = normalizeSearchText(searchTerm);
 
-  return searchableText.includes(searchTerm);
+  return searchableText.includes(normalizedSearchTerm);
 }
 
 function applyProductFilters() {
   const selectedCategory = categoryFilter.value;
-  const searchTerm = productSearch.value.trim().toLowerCase();
+  const searchTerm = normalizeSearchText(productSearch.value);
 
   clearSearchBtn.disabled = searchTerm.length === 0;
 
@@ -397,7 +395,8 @@ function applyProductFilters() {
 
   const filteredProducts = allProducts.filter((product) => {
     const categoryMatches = selectedCategory
-      ? product.category === selectedCategory
+      ? normalizeSearchText(product.category) ===
+        normalizeSearchText(selectedCategory)
       : true;
     const searchMatches = matchesProductSearch(product, searchTerm);
 
@@ -407,13 +406,9 @@ function applyProductFilters() {
   displayProducts(filteredProducts);
 }
 
-categoryFilter.addEventListener("change", () => {
-  applyProductFilters();
-});
+categoryFilter.addEventListener("change", applyProductFilters);
 
-productSearch.addEventListener("input", () => {
-  applyProductFilters();
-});
+productSearch.addEventListener("input", applyProductFilters);
 
 clearSearchBtn.addEventListener("click", () => {
   productSearch.value = "";
@@ -661,6 +656,7 @@ async function init() {
   savedItems = loadSavedItems();
   renderSavedItems();
   hydrateConversation();
+  applyProductFilters();
 }
 
 init();
