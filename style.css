@@ -5,24 +5,146 @@
   padding: 0;
 }
 
+:root {
+  --loreal-black: #101010;
+  --loreal-charcoal: #2b2b2b;
+  --loreal-white: #ffffff;
+  --loreal-ivory: #f6f3ee;
+  --loreal-silver: #d9d9d6;
+  --loreal-silver-dark: #b9b9b3;
+  --loreal-gold: #c7a768;
+  --loreal-gold-deep: #9f8248;
+  --text-muted: #5f5f5f;
+  --danger: #7f1d1d;
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aura-shift {
+  0% {
+    transform: translateX(-15%) scale(1);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translateX(10%) scale(1.08);
+    opacity: 0.7;
+  }
+
+  100% {
+    transform: translateX(-15%) scale(1);
+    opacity: 0.45;
+  }
+}
+
+@keyframes ai-glow {
+  0% {
+    box-shadow: 0 10px 22px rgba(16, 16, 16, 0.22);
+  }
+
+  50% {
+    box-shadow:
+      0 14px 28px rgba(16, 16, 16, 0.26),
+      0 0 0 3px rgba(199, 167, 104, 0.2);
+  }
+
+  100% {
+    box-shadow: 0 10px 22px rgba(16, 16, 16, 0.22);
+  }
+}
+
 /* —— body + fonts —— */
 body {
   font-family: "Montserrat", Arial, Helvetica, sans-serif;
-  color: #333;
+  color: var(--loreal-charcoal);
   display: flex;
   justify-content: center;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      circle at 14% 10%,
+      rgba(199, 167, 104, 0.34) 0%,
+      rgba(199, 167, 104, 0.1) 30%,
+      rgba(199, 167, 104, 0) 52%
+    ),
+    radial-gradient(
+      circle at 87% 5%,
+      rgba(159, 130, 72, 0.24) 0%,
+      rgba(159, 130, 72, 0.08) 34%,
+      rgba(159, 130, 72, 0) 58%
+    ),
+    linear-gradient(180deg, #eadfcd 0%, #f4e8d4 36%, #eee1cd 100%);
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 28% 72%,
+      rgba(199, 167, 104, 0.16) 0%,
+      rgba(199, 167, 104, 0) 42%
+    ),
+    radial-gradient(
+      circle at 78% 62%,
+      rgba(16, 16, 16, 0.06) 0%,
+      rgba(16, 16, 16, 0) 45%
+    );
 }
 
 .page-wrapper {
   width: 90%;
   max-width: 900px;
+  position: relative;
+  z-index: 1;
 }
 
 /* header */
 .site-header {
   text-align: center;
   padding-top: 50px;
-  padding-bottom: 10px;
+  padding-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  animation: fade-slide-up 0.6s ease both;
+}
+
+.site-header::before {
+  content: "";
+  position: absolute;
+  width: 70%;
+  height: 130px;
+  left: 15%;
+  top: -40px;
+  background: radial-gradient(
+    circle,
+    rgba(199, 167, 104, 0.34) 0%,
+    rgba(199, 167, 104, 0.09) 52%,
+    rgba(199, 167, 104, 0) 78%
+  );
+  filter: blur(6px);
+  pointer-events: none;
+  animation: aura-shift 8s ease-in-out infinite;
+}
+
+.site-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .logo {
@@ -34,6 +156,8 @@ body {
   font-size: 22px;
   font-weight: 500;
   margin-bottom: 10px;
+  color: var(--loreal-black);
+  letter-spacing: 0.01em;
 }
 
 /* category filter */
@@ -42,6 +166,8 @@ body {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  animation: fade-slide-up 0.65s ease both;
+  animation-delay: 0.08s;
 }
 
 .search-input-wrapper {
@@ -54,10 +180,11 @@ body {
   width: 100%;
   padding: 16px;
   font-size: 18px;
-  border: 2px solid #000;
+  border: 2px solid var(--loreal-silver-dark);
   border-radius: 8px;
-  background-color: white;
+  background-color: var(--loreal-white);
   font-weight: 500;
+  text-align: start;
 }
 
 .search-section input {
@@ -74,12 +201,12 @@ body {
 
 #clearSearchBtn {
   position: absolute;
-  right: 8px;
-  top: 50%;
+  inset-inline-end: 8px;
+  inset-block-start: 50%;
   transform: translateY(-50%);
-  border: 1px solid #000;
-  background: #fff;
-  color: #000;
+  border: 1px solid var(--loreal-charcoal);
+  background: var(--loreal-white);
+  color: var(--loreal-charcoal);
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
@@ -88,8 +215,8 @@ body {
 }
 
 #clearSearchBtn:hover {
-  background: #000;
-  color: #fff;
+  background: var(--loreal-charcoal);
+  color: var(--loreal-white);
 }
 
 #clearSearchBtn:disabled {
@@ -100,15 +227,19 @@ body {
 .search-section input:focus,
 .search-section select:focus {
   outline: none;
-  border-color: #666;
+  border-color: var(--loreal-gold);
+  box-shadow: 0 0 0 3px rgba(199, 167, 104, 0.22);
 }
 
 /* chat section */
 .chatbox {
   margin: 40px 0;
-  border: 2px solid #000;
+  border: 2px solid var(--loreal-silver-dark);
   border-radius: 8px;
   padding: 26px;
+  background: var(--loreal-white);
+  animation: fade-slide-up 0.7s ease both;
+  animation-delay: 0.2s;
 }
 
 .chatbox h2 {
@@ -130,9 +261,9 @@ body {
 }
 
 .new-chat-btn {
-  background-color: #000;
-  color: #fff;
-  border: none;
+  background-color: var(--loreal-black);
+  color: var(--loreal-white);
+  border: 1px solid var(--loreal-gold);
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
@@ -146,11 +277,13 @@ body {
 }
 
 .new-chat-btn:hover {
-  background-color: #333;
+  background-color: var(--loreal-gold);
+  color: var(--loreal-black);
 }
 
 .new-chat-btn:active {
-  background-color: #000;
+  background-color: var(--loreal-gold-deep);
+  color: var(--loreal-white);
 }
 
 .chat-window {
@@ -159,7 +292,7 @@ body {
   line-height: 1.5;
   height: 250px;
   overflow-y: auto;
-  background: #fafafa;
+  background: var(--loreal-ivory);
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;
@@ -192,21 +325,21 @@ body {
 
 .you-message {
   align-self: flex-end;
-  background: #111;
-  color: #fff;
+  background: var(--loreal-black);
+  color: var(--loreal-white);
 }
 
 .assistant-message {
   align-self: flex-start;
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--loreal-white);
+  border: 1px solid var(--loreal-silver);
 }
 
 .system-message {
   align-self: center;
   background: #fff5f5;
   border: 1px solid #f0b6b6;
-  color: #7f1d1d;
+  color: var(--danger);
 }
 
 .message-actions {
@@ -230,21 +363,21 @@ body {
 }
 
 .message-save-button {
-  color: #111;
+  color: var(--loreal-black);
 }
 
 .message-save-button:hover {
-  background: #111;
-  color: #fff;
+  background: var(--loreal-black);
+  color: var(--loreal-white);
 }
 
 .message-delete-button {
-  color: #7f1d1d;
+  color: var(--danger);
 }
 
 .message-delete-button:hover {
-  background: #7f1d1d;
-  color: #fff;
+  background: var(--danger);
+  color: var(--loreal-white);
 }
 
 /* placeholder message */
@@ -252,7 +385,7 @@ body {
   width: 100%;
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--text-muted);
   font-size: 18px;
 }
 
@@ -268,20 +401,21 @@ body {
   padding: 12px;
   font-size: 18px;
   border: none;
-  border-bottom: 2px solid #ccc;
+  border-bottom: 2px solid var(--loreal-silver-dark);
   background: transparent;
+  text-align: start;
 }
 
 .chat-form input:focus {
   outline: none;
-  border-bottom-color: #000;
+  border-bottom-color: var(--loreal-gold);
 }
 
 .chat-form button {
   font-size: 18px;
-  background: #000;
-  color: #fff;
-  border: none;
+  background: var(--loreal-black);
+  color: var(--loreal-white);
+  border: 1px solid var(--loreal-gold);
   padding: 12px;
   width: 48px;
   height: 48px;
@@ -293,11 +427,12 @@ body {
 }
 
 .chat-form button:hover {
-  background: #666666;
+  background: var(--loreal-gold);
+  color: var(--loreal-black);
 }
 
 .chat-form button:focus {
-  outline: 2px solid #000;
+  outline: 2px solid var(--loreal-gold);
   outline-offset: 2px;
 }
 
@@ -319,7 +454,7 @@ body {
   margin: 60px 0 40px;
   text-align: center;
   font-size: 14px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .site-footer nav {
@@ -328,12 +463,12 @@ body {
 
 .site-footer a {
   margin: 0 8px;
-  color: #000;
+  color: var(--loreal-black);
   text-decoration: none;
 }
 
 .site-footer a:hover {
-  color: #666666;
+  color: var(--loreal-gold-deep);
 }
 
 /* products grid */
@@ -346,26 +481,36 @@ body {
 
 .product-card {
   flex: 0 1 calc(33.333% - 14px);
-  border: 1px solid #ccc;
+  border: 1px solid var(--loreal-silver);
   padding: 15px;
   border-radius: 4px;
   display: flex;
   gap: 15px;
   min-height: 160px;
   width: 100%;
-  background: #fff;
-  text-align: left;
+  background: var(--loreal-white);
+  text-align: start;
   cursor: pointer;
   position: relative;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--loreal-gold);
+  box-shadow: 0 10px 20px rgba(16, 16, 16, 0.08);
 }
 
 .product-card.selected {
-  border-color: #000;
-  box-shadow: 0 0 0 2px #000 inset;
+  border-color: var(--loreal-gold);
+  box-shadow: 0 0 0 2px var(--loreal-gold) inset;
 }
 
 .product-card:focus {
-  outline: 2px solid #000;
+  outline: 2px solid var(--loreal-gold);
   outline-offset: 2px;
 }
 
@@ -391,14 +536,14 @@ body {
 
 .product-card p {
   font-size: 14px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 /* Product Description Tooltip on Hover */
 .product-description-tooltip {
   position: absolute;
-  background: #000;
-  color: #fff;
+  background: var(--loreal-charcoal);
+  color: var(--loreal-white);
   padding: 14px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -430,7 +575,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #000;
+  border-top-color: var(--loreal-charcoal);
 }
 
 .product-card:hover .product-description-tooltip,
@@ -444,8 +589,11 @@ body {
 .selected-products {
   margin: 40px 0;
   padding: 20px;
-  border: 2px solid #000;
+  border: 2px solid var(--loreal-silver-dark);
   border-radius: 8px;
+  background: var(--loreal-white);
+  animation: fade-slide-up 0.72s ease both;
+  animation-delay: 0.14s;
 }
 
 .selected-products h2 {
@@ -463,8 +611,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--loreal-black);
+  background: var(--loreal-white);
   border-radius: 999px;
   padding: 8px 12px;
   cursor: pointer;
@@ -481,16 +629,32 @@ body {
   padding: 16px;
   font-size: 18px;
   font-weight: 500;
-  color: #fff;
-  background: #000;
-  border: none;
+  color: var(--loreal-white);
+  background: linear-gradient(
+    135deg,
+    var(--loreal-black),
+    var(--loreal-charcoal)
+  );
+  border: 1px solid var(--loreal-gold);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition:
+    background 0.3s,
+    transform 0.22s ease,
+    box-shadow 0.3s ease,
+    color 0.3s ease;
+  box-shadow: 0 10px 22px rgba(16, 16, 16, 0.22);
+  animation: ai-glow 3.8s ease-in-out infinite;
 }
 
 .generate-btn:hover {
-  background: #666;
+  background: linear-gradient(
+    135deg,
+    var(--loreal-gold),
+    var(--loreal-gold-deep)
+  );
+  color: var(--loreal-black);
+  transform: translateY(-2px);
 }
 
 .generate-btn i {
@@ -501,9 +665,11 @@ body {
 .saved-library {
   margin: 40px 0;
   padding: 20px;
-  border: 2px solid #000;
+  border: 2px solid var(--loreal-silver-dark);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--loreal-ivory);
+  animation: fade-slide-up 0.75s ease both;
+  animation-delay: 0.18s;
 }
 
 .saved-library-header h2 {
@@ -512,7 +678,7 @@ body {
 }
 
 .saved-library-header p {
-  color: #666;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 
@@ -525,17 +691,17 @@ body {
 
 .saved-empty-state {
   padding: 20px;
-  border: 1px dashed #bbb;
+  border: 1px dashed var(--loreal-silver-dark);
   border-radius: 12px;
-  color: #666;
-  background: #fff;
+  color: var(--text-muted);
+  background: var(--loreal-white);
   text-align: center;
 }
 
 .saved-item {
-  border: 1px solid #ccc;
+  border: 1px solid var(--loreal-silver);
   border-radius: 12px;
-  background: #fff;
+  background: var(--loreal-white);
   padding: 16px;
 }
 
@@ -551,7 +717,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #666;
+  color: var(--text-muted);
   margin-bottom: 6px;
 }
 
@@ -561,8 +727,8 @@ body {
 }
 
 .saved-item-delete {
-  border: 1px solid #7f1d1d;
-  color: #7f1d1d;
+  border: 1px solid var(--danger);
+  color: var(--danger);
   background: transparent;
   border-radius: 999px;
   padding: 6px 10px;
@@ -576,13 +742,105 @@ body {
 }
 
 .saved-item-delete:hover {
-  background: #7f1d1d;
-  color: #fff;
+  background: var(--danger);
+  color: var(--loreal-white);
 }
 
 .saved-item-content {
   margin-top: 12px;
   white-space: pre-line;
   line-height: 1.5;
-  color: #333;
+  color: var(--loreal-charcoal);
+}
+
+[dir="rtl"] {
+  direction: rtl;
+}
+
+[dir="rtl"] .products-grid,
+[dir="rtl"] #selectedProductsList,
+[dir="rtl"] .chat-form,
+[dir="rtl"] .search-section {
+  direction: rtl;
+}
+
+[dir="rtl"] .product-card,
+[dir="rtl"] .selected-product-chip,
+[dir="rtl"] .chat-message,
+[dir="rtl"] .chatbox-header,
+[dir="rtl"] .saved-item-header {
+  text-align: right;
+}
+
+[dir="rtl"] .product-card {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .selected-product-chip {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .chat-form {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .you-message {
+  align-self: flex-start;
+}
+
+[dir="rtl"] .assistant-message {
+  align-self: flex-end;
+}
+
+[dir="rtl"] .chat-label,
+[dir="rtl"] .chat-text,
+[dir="rtl"] .saved-library-header p,
+[dir="rtl"] .saved-item-content,
+[dir="rtl"] .product-card h3,
+[dir="rtl"] .product-card p,
+[dir="rtl"] .search-section input,
+[dir="rtl"] .search-section select,
+[dir="rtl"] .chat-form input {
+  text-align: right;
+}
+
+[dir="rtl"] .generate-btn i {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
+@media (max-width: 640px) {
+  .site-header {
+    padding-top: 34px;
+  }
+
+  .site-header::before {
+    width: 92%;
+    left: 4%;
+    top: -50px;
+  }
+
+  .logo {
+    width: 200px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-header,
+  .search-section,
+  .selected-products,
+  .saved-library,
+  .chatbox {
+    animation: none;
+  }
+
+  .site-header::before,
+  .generate-btn {
+    animation: none;
+  }
+
+  .product-card,
+  .generate-btn {
+    transition: none;
+  }
 }
