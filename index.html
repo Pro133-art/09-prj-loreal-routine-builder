@@ -25,12 +25,17 @@
 
       <div class="search-section">
         <!-- Product search -->
-        <input
-          id="productSearch"
-          type="search"
-          placeholder="Search products by name or keyword..."
-          aria-label="Search products"
-        />
+        <div class="search-input-wrapper">
+          <input
+            id="productSearch"
+            type="search"
+            placeholder="Search products by name or keyword..."
+            aria-label="Search products"
+          />
+          <button id="clearSearchBtn" type="button" aria-label="Clear search">
+            Clear
+          </button>
+        </div>
 
         <!-- Category filter -->
         <select id="categoryFilter">

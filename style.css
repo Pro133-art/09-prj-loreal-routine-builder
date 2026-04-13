@@ -44,9 +44,14 @@ body {
   flex-wrap: wrap;
 }
 
+.search-input-wrapper {
+  flex: 1 1 300px;
+  position: relative;
+}
+
 .search-section input,
 .search-section select {
-  flex: 1 1 300px;
+  width: 100%;
   padding: 16px;
   font-size: 18px;
   border: 2px solid #000;
@@ -56,11 +61,40 @@ body {
 }
 
 .search-section input {
+  padding-right: 84px;
+}
+
+.search-section input {
   cursor: text;
 }
 
 .search-section select {
   cursor: pointer;
+}
+
+#clearSearchBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#clearSearchBtn:hover {
+  background: #000;
+  color: #fff;
+}
+
+#clearSearchBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .search-section input:focus,

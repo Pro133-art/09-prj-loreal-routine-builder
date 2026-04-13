@@ -1,6 +1,7 @@
 // DOM references
 const categoryFilter = document.getElementById("categoryFilter");
 const productSearch = document.getElementById("productSearch");
+const clearSearchBtn = document.getElementById("clearSearchBtn");
 const productsContainer = document.getElementById("productsContainer");
 const chatForm = document.getElementById("chatForm");
 const chatWindow = document.getElementById("chatWindow");
@@ -382,6 +383,8 @@ function applyProductFilters() {
   const selectedCategory = categoryFilter.value;
   const searchTerm = productSearch.value.trim().toLowerCase();
 
+  clearSearchBtn.disabled = searchTerm.length === 0;
+
   // Keep initial empty state when no filter is applied.
   if (!selectedCategory && !searchTerm) {
     productsContainer.innerHTML = `
@@ -410,6 +413,12 @@ categoryFilter.addEventListener("change", () => {
 
 productSearch.addEventListener("input", () => {
   applyProductFilters();
+});
+
+clearSearchBtn.addEventListener("click", () => {
+  productSearch.value = "";
+  applyProductFilters();
+  productSearch.focus();
 });
 
 productsContainer.addEventListener("click", (e) => {
