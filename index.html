@@ -17,20 +17,14 @@
 
   <body>
     <div class="page-wrapper">
-      <!------- Header / Branding ------->
+      <!-- Header -->
       <header class="site-header">
         <img src="img/loreal-logo.png" alt="L'Oréal Logo" class="logo" />
         <h1 class="site-title">Smart Routine &amp; Product Advisor</h1>
       </header>
 
-      <!-- Category Filter -->
-      <!-- WHAT: Dropdown menu to select a product category
-           WHY: Filters products so users see only what they're interested in
-           HOW: When user selects an option, JavaScript listens for "change" event,
-                filters all products, and displays matching ones
-           Note: Option values must exactly match product.category in products.json
-      -->
       <div class="search-section">
+        <!-- Category filter -->
         <select id="categoryFilter">
           <option value="" disabled selected>Choose a Category</option>
           <option value="cleanser">Cleansers</option>
@@ -46,35 +40,19 @@
         </select>
       </div>
 
-      <!-- Products Grid -->
-      <!-- WHAT: Container for product cards
-           WHY: Shows filtered products in a nice grid layout
-           HOW: JavaScript fills this with <button> elements for each product
-                Users click buttons to select products
-           Empty initially - JavaScript adds content dynamically
-      -->
+      <!-- Product grid -->
       <div id="productsContainer" class="products-grid"></div>
 
-      <!-- Selected Products -->
-      <!-- WHAT: Shows which products user has chosen (as removable chips)
-           WHY: Users need visual feedback of their selections
-           HOW: When user clicks a product card, JavaScript adds/removes it from this area
-                Each chip has an X button to remove it
-                "Generate Routine" button creates an AI routine from selections
-      -->
       <div class="selected-products">
         <h2>Selected Products</h2>
         <div id="selectedProductsList"></div>
+        <!-- Selected products -->
         <button id="generateRoutine" class="generate-btn">
           <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Routine
         </button>
       </div>
 
-      <!------- Saved Items -------
-         WHAT: A library of saved routines
-         WHY: Lets users keep useful routine answers and delete old ones later
-           HOW: JavaScript stores saved items in localStorage and renders them here
-      -->
+      <!-- Saved routines -->
       <section class="saved-library">
         <div class="saved-library-header">
           <h2>Saved Routines</h2>
@@ -86,12 +64,7 @@
         <div id="savedItemsList" class="saved-items-list"></div>
       </section>
 
-      <!------- Chat Area ------->
-      <!-- WHAT: Main conversation interface with OpenAI chatbot
-           WHY: Users can ask questions about products and get personalized advice
-           HOW: User types a message → JavaScript sends to OpenAI API → Reply appears in chat
-                Full conversation history is maintained so AI remembers context
-      -->
+      <!-- Chat area -->
       <section class="chatbox">
         <div class="chatbox-header">
           <h2>Let's Build Your Routine</h2>
@@ -99,10 +72,8 @@
             <i class="fa-solid fa-plus"></i> New Chat
           </button>
         </div>
-        <!-- Where messages appear (scrollable) -->
         <div id="chatWindow" class="chat-window"></div>
 
-        <!-- Form for user to type and send messages -->
         <form id="chatForm" class="chat-form">
           <label for="userInput" class="visually-hidden">Message</label>
           <input
@@ -120,11 +91,10 @@
         </form>
       </section>
 
-      <!------- Footer Links ------->
+      <!-- Footer links -->
       <footer class="site-footer">
         <p>&copy; 2025 L'Oréal. All rights reserved.</p>
         <nav>
-          <!-- These URLs are placeholders -->
           <a href="#">Privacy Policy</a>
           <a href="#">Terms of Use</a>
           <a href="#">Contact</a>
@@ -132,10 +102,6 @@
       </footer>
     </div>
 
-    <!-- App script
-          This project now calls your Cloudflare Worker URL directly from script.js.
-          No secrets.js file is required for API keys.
-        -->
     <script src="script.js"></script>
   </body>
 </html>
