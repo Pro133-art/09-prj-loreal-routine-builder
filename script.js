@@ -37,6 +37,10 @@ const messageElementMap = new Map(); // Keeps track of rendered chat messages so
 let savedItems = []; // Saved routines
 let messageIdCounter = 0; // Used to make unique chat message ids
 let savedItemIdCounter = 0; // Used to make unique saved item ids
+const CLOUDFLARE_WORKER_URL =
+  "https://loreal-chatbot-rountine-builder.liwinsto.workers.dev/"; // Example: "https://your-worker-name.your-subdomain.workers.dev"
+const SYSTEM_PROMPT =
+  "You are a helpful beauty and skincare advisor. Give beginner-friendly advice in short, clear language. Answer normal questions directly and conversationally. When the user asks for a routine or says to build one, format it with this exact structure: Title line, AM Routine section, PM Routine section, Why this works section, Missing step section (if needed). Use numbered steps and short lines.";
 
 /* ====== CONVERSATION MEMORY + SYSTEM INSTRUCTIONS ======
    Purpose: Store conversation history and tell OpenAI how to behave
@@ -59,8 +63,7 @@ let savedItemIdCounter = 0; // Used to make unique saved item ids
 const messages = [
   {
     role: "system",
-    content:
-      "You are a helpful beauty and skincare advisor. Give beginner-friendly advice in short, clear steps. Always format routine answers with this exact structure: Title line, AM Routine section, PM Routine section, Why this works section, Missing step section (if needed). Use numbered steps and short lines.",
+    content: SYSTEM_PROMPT,
   },
 ];
 
@@ -320,7 +323,8 @@ function getMessageLabel(role) {
 }
 
 function extractRoutineTopic(routineText) {
-  const firstLine = routineText.split("\n").find((line) => line.trim().length > 0) || "";
+  const firstLine =
+    routineText.split("\n").find((line) => line.trim().length > 0) || "";
   const cleanedFirstLine = firstLine.replace(/^Title:\s*/i, "").trim();
 
   if (cleanedFirstLine.length >= 5) {
@@ -329,7 +333,9 @@ function extractRoutineTopic(routineText) {
 
   const amLine = routineText
     .split("\n")
-    .find((line) => /am routine|pm routine|sensitive|acne|dry|oily|hydration/i.test(line));
+    .find((line) =>
+      /am routine|pm routine|sensitive|acne|dry|oily|hydration/i.test(line),
+    );
 
   if (amLine) {
     return amLine.trim().slice(0, 60);
@@ -339,8 +345,13 @@ function extractRoutineTopic(routineText) {
 }
 
 function persistChatHistory() {
-  const conversationMessages = messages.filter((message) => message.role !== "system");
-  localStorage.setItem(CHAT_HISTORY_STORAGE_KEY, JSON.stringify(conversationMessages));
+  const conversationMessages = messages.filter(
+    (message) => message.role !== "system",
+  );
+  localStorage.setItem(
+    CHAT_HISTORY_STORAGE_KEY,
+    JSON.stringify(conversationMessages),
+  );
 }
 
 function persistSavedItems() {
@@ -427,17 +438,25 @@ if (savedItemsList) {
 function saveMessageToLibrary(messageId) {
   const message = messages.find((entry) => entry.id === messageId);
 
-  if (!message || message.role !== "assistant" || !isRoutineMessage(message.content)) {
+  if (
+    !message ||
+    message.role !== "assistant" ||
+    !isRoutineMessage(message.content)
+  ) {
     return;
   }
 
-  const alreadySaved = savedItems.some((item) => item.sourceMessageId === messageId);
+  const alreadySaved = savedItems.some(
+    (item) => item.sourceMessageId === messageId,
+  );
 
   if (alreadySaved) {
     return;
   }
 
-  const defaultTopic = extractRoutineTopic(message.displayText || message.content);
+  const defaultTopic = extractRoutineTopic(
+    message.displayText || message.content,
+  );
   const userTopic = window.prompt(
     "Add a short name/topic for this routine so you can find it later:",
     defaultTopic,
@@ -498,12 +517,17 @@ function hydrateConversation() {
 
     messages.push(message);
 
-    appendMessage(getMessageLabel(message.role), message.displayText || message.content, {
-      messageId: message.id,
-      canSave: true,
-      canDelete: true,
-      isRoutine: message.role === "assistant" && isRoutineMessage(message.content),
-    });
+    appendMessage(
+      getMessageLabel(message.role),
+      message.displayText || message.content,
+      {
+        messageId: message.id,
+        canSave: true,
+        canDelete: true,
+        isRoutine:
+          message.role === "assistant" && isRoutineMessage(message.content),
+      },
+    );
   });
 }
 
@@ -667,10 +691,10 @@ selectedProductsList.addEventListener("click", (e) => {
 
   // Get the product ID to remove
   const productId = Number(removeButton.dataset.removeId);
-  
+
   // Deselect the product
   selectedProductIds.delete(productId);
-  
+
   // Update UI to reflect the removal
   renderSelectedProducts(); // Remove the chip
   refreshCurrentCategoryView(); // Update highlighting in product grid
@@ -748,7 +772,12 @@ function appendMessage(sender, text, options = {}) {
   if (options.canSave && options.messageId) {
     const actionsElement = createMessageActions({
       id: options.messageId,
-      role: sender === "You" ? "user" : sender === "Assistant" ? "assistant" : "system",
+      role:
+        sender === "You"
+          ? "user"
+          : sender === "Assistant"
+            ? "assistant"
+            : "system",
       content: text,
     });
 
@@ -756,10 +785,10 @@ function appendMessage(sender, text, options = {}) {
       messageElement.appendChild(actionsElement);
     }
   }
-  
+
   // Add the complete message to the chat window
   chatWindow.appendChild(messageElement);
-  
+
   // Auto-scroll to show new message
   chatWindow.scrollTop = chatWindow.scrollHeight;
 
@@ -796,11 +825,12 @@ function appendMessage(sender, text, options = {}) {
    - Makes code easier to test and reuse
 */
 async function getChatbotReply() {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const endpoint = CLOUDFLARE_WORKER_URL;
+
+  const response = await fetch(endpoint, {
     method: "POST", // POST = we're sending data, not just retrieving
     headers: {
-      "Content-Type": "application/json", // Tell OpenAI we're sending JSON
-      Authorization: `Bearer ${open_api_key}`, // Authentication: include API key
+      "Content-Type": "application/json", // Tell the API we're sending JSON
     },
     body: JSON.stringify({
       model: "gpt-4o", // Which AI model to use
@@ -927,13 +957,17 @@ chatForm.addEventListener("submit", async (e) => {
 
   // Get user's message
   const userMessage = userInput.value.trim();
-  if (!userMessage) { // Don't send empty messages
+  if (!userMessage) {
+    // Don't send empty messages
     return;
   }
 
-  // Check if API key is configured
-  if (typeof open_api_key === "undefined" || !open_api_key) {
-    appendMessage("System", "Add your OpenAI key in secrets.js first.");
+  // Check if Cloudflare Worker URL is configured
+  if (!CLOUDFLARE_WORKER_URL) {
+    appendMessage(
+      "System",
+      "Set your CLOUDFLARE_WORKER_URL in script.js first.",
+    );
     return;
   }
 
@@ -942,7 +976,7 @@ chatForm.addEventListener("submit", async (e) => {
 
   // Build the context about selected products
   const selectedContext = buildSelectedProductsContext();
-  
+
   // Create message with hidden context: user sees the question, OpenAI gets product list
   const contextualUserMessage = `${userMessage}\n\nProduct context for this user:\n${selectedContext}`;
 
@@ -992,15 +1026,18 @@ generateRoutineButton.addEventListener("click", async () => {
     return;
   }
 
-  // Validation: Make sure API key is configured
-  if (typeof open_api_key === "undefined" || !open_api_key) {
-    appendMessage("System", "Add your OpenAI key in secrets.js first.");
+  // Validation: Make sure Cloudflare Worker URL is configured
+  if (!CLOUDFLARE_WORKER_URL) {
+    appendMessage(
+      "System",
+      "Set your CLOUDFLARE_WORKER_URL in script.js first.",
+    );
     return;
   }
 
   // Build context about selected products
   const selectedContext = buildSelectedProductsContext();
-  
+
   // Create detailed prompt for OpenAI (tells it exactly how to format the routine)
   const routineRequest = `Create a beginner-friendly AM/PM routine based ONLY on these selected products.\n\n${selectedContext}\n\nRules:\n1) Use only selected products.\n2) Put steps in the correct order.\n3) Keep it short and clear for a beginner.\n4) Mention how often to use each product.\n5) If important product types are missing (like sunscreen), clearly mention what is missing.\n6) Format exactly like this:\nTitle: Routine built from your selected products\nAM Routine:\n1. ...\n2. ...\nPM Routine:\n1. ...\n2. ...\nWhy this works:\n- ...\nMissing step (if any):\n- ...`;
 
@@ -1029,21 +1066,20 @@ generateRoutineButton.addEventListener("click", async () => {
 function resetChat() {
   // Clear all messages from the chat window
   chatWindow.innerHTML = "";
-  
+
   // Reset messages array to just the system message
   messages.length = 0;
   messages.push({
     role: "system",
-    content:
-      "You are a helpful beauty and skincare advisor. Give beginner-friendly advice in short, clear steps. Always format routine answers with this exact structure: Title line, AM Routine section, PM Routine section, Why this works section, Missing step section (if needed). Use numbered steps and short lines.",
+    content: SYSTEM_PROMPT,
   });
-  
+
   // Clear the message element map
   messageElementMap.clear();
-  
+
   // Reset message ID counter
   messageIdCounter = 0;
-  
+
   // Clear chat history from localStorage
   localStorage.removeItem(CHAT_HISTORY_STORAGE_KEY);
 }

@@ -132,13 +132,10 @@
       </footer>
     </div>
 
-    <!-- SCRIPT LOADING ORDER IS IMPORTANT!
-         1. secrets.js loads FIRST - defines open_api_key variable
-         2. script.js loads SECOND - uses open_api_key to call OpenAI API
-         
-         If you reverse this order, script.js will try to use open_api_key before it exists (error!)
-    -->
-    <script src="secrets.js"></script>
+    <!-- App script
+          This project now calls your Cloudflare Worker URL directly from script.js.
+          No secrets.js file is required for API keys.
+        -->
     <script src="script.js"></script>
   </body>
 </html>
